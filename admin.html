@@ -5,14 +5,21 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin View</title>
     <style>
+        :root {
+            --primary-color: #394356;
+            --secondary2-color: #079f4e;
+            --secondary-color: #036f35;
+            --third-color: #f9f4f2;
+            --text-color: #333;
+        }
         body {
             font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
+            background-color: var(--primary-color);
             margin: 0;
             padding: 20px;
         }
         .header {
-            background-color: white;
+            background-color: var(--third-color);
             padding: 15px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -22,33 +29,33 @@
             align-items: center;
         }
         h1 {
-            color: #333;
+            color: var(--text-color);
             margin: 0;
             font-size: 20px;
         }
         .logout {
             background-color: #dc3545;
-            color: white;
+            color: var(--third-color);
             padding: 8px 15px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
         }
         .nav-btn {
-            background-color: #6c757d;
-            color: white;
-            padding: 5px 10px;
+            background-color: var(--secondary2-color);
+            color: var(--third-color);
+            padding: 8px 15px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
             margin-left: 10px;
+            margin: 0 15px;
         }
         .nav-btn:hover {
-            background-color: #5a6268;
+            background-color: var(--secondary-color);
         }
         .container {
-            background-color: white;
+            background-color: var(--third-color);
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
@@ -67,8 +74,8 @@
             font-size: 14px;
         }
         button {
-            background-color: #007bff;
-            color: white;
+            background-color: var(--secondary2-color);
+            color: var(--third-color);
             padding: 10px;
             border: none;
             border-radius: 4px;
@@ -76,7 +83,7 @@
             font-size: 16px;
         }
         button:hover {
-            background-color: #0056b3;
+            background-color: var(--secondary-color);
         }
         table {
             width: 100%;
@@ -121,11 +128,11 @@
 </head>
 <body>
     <div class="header">
+        <h1>Admin View</h1>
         <div>
-            <h1>Admin View</h1>
             <button class="nav-btn" onclick="goToDashboard()">Dashboard</button>
+            <button class="logout" onclick="logout()">Logout</button>
         </div>
-        <button class="logout" onclick="logout()">Logout</button>
     </div>
 
     <div class="container">
