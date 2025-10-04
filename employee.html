@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee View</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin: 0;
+            font-size: 20px;
+        }
+        .logout {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+        input, select, textarea {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        #error {
+            color: red;
+            margin-bottom: 10px;
+        }
+        .currency {
+            font-weight: bold;
+            color: #007bff;
+        }
+        .status-approved { color: green; }
+        .status-rejected { color: red; }
+        .status-pending { color: orange; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+        <h1>Employee View - Submit Receipt</h1>
+        </div>
+        <button class="nav-btn" onclick="goToDashboard()" style="background-color: #6c757d; margin-left: 10px; padding: 5px 10px; font-size: 12px;">Dashboard</button>
+        <button class="logout" onclick="logout()">Logout</button>
+        
+    </div>
+
+    <div class="container">
+        <h2>Add Receipt</h2>
+        <div id="error"></div>
+        <form id="receiptForm">
+            <input type="text" id="description" placeholder="Description (e.g., Lunch)" required>
+            <input type="number" id="amount" placeholder="Amount" step="0.01" required>
+            <select id="category" required>
+                <option value="">Category</option>
+                <option value="Food">Food</option>
+                <option value="Travel">Travel</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="date" id="date" required>
+            <input type="text" id="receiptFile" placeholder="Receipt File (simulated upload path)">
+            <button type="submit">Submit Receipt</button>
+        </form>
+        <div class="currency" id="currencyDisplay"></div>
+    </div>
+
+    <div class="container">
+        <h2>Pending Submissions</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="pendingTable"></tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>Receipt History</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Action Date</th>
+                </tr>
+            </thead>
+            <tbody id="historyTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const adminData = JSON.parse(localStorage.getItem('adminData')) || {};
+        if (!currentUser || currentUser.role !== 'employee') {
+            window.location.href = 'login.html';
+        }
+
+        const currency = adminData.baseCurrency || 'USD';
+        document.getElementById('currencyDisplay').textContent = `Currency: ${currency}`;
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        const userId = currentUser.email;
+
+        function getPendingExpenses() {
+            return expenses.filter(exp => exp.userId === userId && exp.status === 'pending');
+        }
+
+        function getHistoryExpenses() {
+            return expenses.filter(exp => exp.userId === userId && exp.status !== 'pending');
+        }
+
+        function updatePendingTable() {
+            const tbody = document.getElementById('pendingTable');
+            tbody.innerHTML = '';
+            const pending = getPendingExpenses();
+            pending.forEach(exp => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = exp.description;
+                row.insertCell(1).textContent = `${exp.amount} ${currency}`;
+                row.insertCell(2).textContent = exp.category;
+                row.insertCell(3).textContent = exp.date;
+                const statusCell = row.insertCell(4);
+                statusCell.textContent = exp.status;
+                statusCell.className = `status-${exp.status}`;
+            });
+        }
+
+        function updateHistoryTable() {
+            const tbody = document.getElementById('historyTable');
+            tbody.innerHTML = '';
+            const history = getHistoryExpenses();
+            history.forEach(exp => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = exp.description;
+                row.insertCell(1).textContent = `${exp.amount} ${currency}`;
+                row.insertCell(2).textContent = exp.category;
+                row.insertCell(3).textContent = exp.date;
+                const statusCell = row.insertCell(4);
+                statusCell.textContent = exp.status;
+                statusCell.className = `status-${exp.status}`;
+                row.insertCell(5).textContent = exp.approvedAt || exp.rejectedAt || 'N/A';
+            });
+        }
+
+        const form = document.getElementById('receiptForm');
+        const errorDiv = document.getElementById('error');
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const description = document.getElementById('description').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const category = document.getElementById('category').value;
+            const date = document.getElementById('date').value;
+            const receiptFile = document.getElementById('receiptFile').value;
+
+            if (!description || !amount || !category || !date) {
+                errorDiv.textContent = 'All fields are required!';
+                return;
+            }
+
+            const newExpense = {
+                id: Date.now(),
+                userId: userId,
+                description,
+                amount,
+                category,
+                date,
+                receiptFile,
+                status: 'pending',
+                submittedAt: new Date().toISOString()
+            };
+
+            expenses.push(newExpense);
+            localStorage.setItem('expenses', JSON.stringify(expenses));
+
+            errorDiv.textContent = '';
+            alert('Receipt submitted successfully!');
+            form.reset();
+            updatePendingTable();
+            updateHistoryTable();
+        });
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
+
+        function goToDashboard() {
+    window.location.href = 'index.html';
+}
+
+        updatePendingTable();
+        updateHistoryTable();
+    </script>
+</body>
+</html>
