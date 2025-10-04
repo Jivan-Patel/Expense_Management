@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin View</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin: 0;
+            font-size: 20px;
+        }
+        .logout {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .nav-btn {
+            background-color: #6c757d;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        .nav-btn:hover {
+            background-color: #5a6268;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            max-width: 400px;
+        }
+        input, select {
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .currency {
+            font-weight: bold;
+            color: #007bff;
+        }
+        #addUserError, #rulesError {
+            color: red;
+            margin-bottom: 10px;
+        }
+        .rules-list {
+            margin-top: 10px;
+        }
+        .rule-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px;
+            border-bottom: 1px solid #ddd;
+        }
+        .total-row {
+            font-weight: bold;
+            background-color: #e9ecef;
+        }
+        .chart-container {
+            margin-top: 20px;
+            height: 300px;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div>
+            <h1>Admin View</h1>
+            <button class="nav-btn" onclick="goToDashboard()">Dashboard</button>
+        </div>
+        <button class="logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <h2>Add User (Employee/Manager)</h2>
+        <div id="addUserError"></div>
+        <form id="addUserForm">
+            <input type="text" id="userName" placeholder="Name" required>
+            <input type="email" id="userEmail" placeholder="Email" required>
+            <input type="password" id="userPassword" placeholder="Password" required>
+            <select id="userRole" required>
+                <option value="">Role</option>
+                <option value="employee">Employee</option>
+                <option value="manager">Manager</option>
+            </select>
+            <button type="submit">Add User</button>
+        </form>
+    </div>
+
+    <div class="container">
+        <h2>Set Approval Rules</h2>
+        <div id="rulesError"></div>
+        <form id="rulesForm">
+            <select id="category" required>
+                <option value="">Category</option>
+                <option value="Food">Food</option>
+                <option value="Travel">Travel</option>
+                <option value="Office Supplies">Office Supplies</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="number" id="maxAmount" placeholder="Max Amount (e.g., 50)" step="0.01" required>
+            <button type="submit">Set Rule</button>
+        </form>
+        <div class="currency" id="currencyDisplay"></div>
+        <h3>Current Rules</h3>
+        <div id="rulesList" class="rules-list"></div>
+    </div>
+
+    <div class="container">
+        <h2>Approved Expenses</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Category</th>
+                    <th>Submitted By</th>
+                    <th>Approved By</th>
+                    <th>Date</th>
+                </tr>
+            </thead>
+            <tbody id="approvedTable"></tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>Expense Reports (Total by Category)</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Total Amount</th>
+                    <th>Count</th>
+                </tr>
+            </thead>
+            <tbody id="reportsTable"></tbody>
+        </table>
+        <div class="chart-container">
+            <canvas id="expenseChart"></canvas>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- For chart rendering -->
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        if (!currentUser || currentUser.role !== 'admin') {
+            window.location.href = 'login.html';
+        }
+
+        const adminData = JSON.parse(localStorage.getItem('adminData')) || {};
+        const currency = adminData.baseCurrency || 'USD';
+        document.getElementById('currencyDisplay').textContent = `Currency: ${currency}`;
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        let rules = JSON.parse(localStorage.getItem('rules')) || {};
+        let users = JSON.parse(localStorage.getItem('users')) || [];
+
+        let chart = null; // For chart instance
+
+        // Add User Form
+        const addUserForm = document.getElementById('addUserForm');
+        const addUserError = document.getElementById('addUserError');
+        addUserForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const name = document.getElementById('userName').value;
+            const email = document.getElementById('userEmail').value;
+            const password = document.getElementById('userPassword').value;
+            const role = document.getElementById('userRole').value;
+            
+            if (!name || !email || !password || !role) {
+                addUserError.textContent = 'All fields required!';
+                return;
+            }
+            
+            if (users.find(u => u.email === email)) {
+                addUserError.textContent = 'Email already exists!';
+                return;
+            }
+            
+            users.push({ name, email, password, role });
+            localStorage.setItem('users', JSON.stringify(users));
+            
+            addUserError.textContent = '';
+            alert('User added successfully!');
+            addUserForm.reset();
+        });
+
+        // Rules Form
+        const rulesForm = document.getElementById('rulesForm');
+        const rulesError = document.getElementById('rulesError');
+        rulesForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            const category = document.getElementById('category').value;
+            const maxAmount = parseFloat(document.getElementById('maxAmount').value);
+            
+            if (!category || !maxAmount) {
+                rulesError.textContent = 'All fields required!';
+                return;
+            }
+            
+            rules[category] = maxAmount;
+            localStorage.setItem('rules', JSON.stringify(rules));
+            
+            rulesError.textContent = '';
+            alert('Rule set successfully!');
+            rulesForm.reset();
+            updateRulesList();
+        });
+
+        function updateRulesList() {
+            const list = document.getElementById('rulesList');
+            list.innerHTML = '';
+            Object.keys(rules).forEach(cat => {
+                const div = document.createElement('div');
+                div.className = 'rule-item';
+                div.innerHTML = `<span>${cat}: Max ${rules[cat]} ${currency}</span>`;
+                list.appendChild(div);
+            });
+        }
+
+        function updateApprovedTable() {
+            const tbody = document.getElementById('approvedTable');
+            tbody.innerHTML = '';
+            const approved = expenses.filter(exp => exp.status === 'approved');
+            approved.forEach(exp => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = exp.description;
+                row.insertCell(1).textContent = `${exp.amount} ${currency}`;
+                row.insertCell(2).textContent = exp.category;
+                row.insertCell(3).textContent = exp.userId;
+                row.insertCell(4).textContent = exp.approvedBy || 'N/A';
+                row.insertCell(5).textContent = exp.date;
+            });
+        }
+
+        function updateReportsTable() {
+            const tbody = document.getElementById('reportsTable');
+            tbody.innerHTML = '';
+            const approved = expenses.filter(exp => exp.status === 'approved');
+            const categoryTotals = {};
+            approved.forEach(exp => {
+                if (!categoryTotals[exp.category]) {
+                    categoryTotals[exp.category] = { total: 0, count: 0 };
+                }
+                categoryTotals[exp.category].total += exp.amount;
+                categoryTotals[exp.category].count++;
+            });
+
+            let grandTotal = 0;
+            let grandCount = 0;
+            Object.keys(categoryTotals).forEach(cat => {
+                const data = categoryTotals[cat];
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = cat;
+                row.insertCell(1).textContent = `${data.total.toFixed(2)} ${currency}`;
+                row.insertCell(2).textContent = data.count;
+                grandTotal += data.total;
+                grandCount += data.count;
+            });
+
+            // Grand Total Row
+            if (Object.keys(categoryTotals).length > 0) {
+                const totalRow = tbody.insertRow();
+                totalRow.className = 'total-row';
+                totalRow.insertCell(0).textContent = 'Grand Total';
+                totalRow.insertCell(1).textContent = `${grandTotal.toFixed(2)} ${currency}`;
+                totalRow.insertCell(2).textContent = grandCount;
+            }
+
+            // Update Chart
+            updateExpenseChart(categoryTotals);
+        }
+
+        function updateExpenseChart(categoryTotals) {
+            const ctx = document.getElementById('expenseChart').getContext('2d');
+            if (chart) {
+                chart.destroy();
+            }
+
+            const labels = Object.keys(categoryTotals);
+            const data = labels.map(cat => categoryTotals[cat].total);
+            const colors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0']; // Distinct colors for light/dark
+
+            chart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors.slice(0, labels.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Expense Breakdown by Category'
+                        }
+                    }
+                }
+            });
+        }
+
+        function goToDashboard() {
+            window.location.href = 'index.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
+
+        updateRulesList();
+        updateApprovedTable();
+        updateReportsTable();
+    </script>
+</body>
+</html>
