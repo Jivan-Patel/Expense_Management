@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager View</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 20px;
+        }
+        .header {
+            background-color: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin: 0;
+            font-size: 20px;
+        }
+        .logout {
+            background-color: #dc3545;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f8f9fa;
+        }
+        .approve-btn {
+            background-color: #28a745;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .approve-btn:hover {
+            background-color: #218838;
+        }
+        .reject-btn {
+            background-color: #dc3545;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .reject-btn:hover {
+            background-color: #c82333;
+        }
+        .currency {
+            font-weight: bold;
+            color: #007bff;
+        }
+        #error {
+            color: red;
+            margin-bottom: 10px;
+        }
+        .status-approved { color: green; }
+        .status-rejected { color: red; }
+        .status-pending { color: orange; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Manager View - Pending Approvals</h1>
+        <button class="logout" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <div id="error"></div>
+        <h2>Pending Approvals</h2>
+        <div class="currency" id="currencyDisplay"></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Paid By</th>
+                    <th>Submitted By</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="pendingTable"></tbody>
+        </table>
+    </div>
+
+    <div class="container">
+        <h2>Approved History</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Amount</th>
+                    <th>Submitted By</th>
+                    <th>Date</th>
+                    <th>Status</th>
+                    <th>Approved Date</th>
+                </tr>
+            </thead>
+            <tbody id="approvedTable"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const currentUser = JSON.parse(localStorage.getItem('currentUser'));
+        const adminData = JSON.parse(localStorage.getItem('adminData')) || {};
+        if (!currentUser || currentUser.role !== 'manager') {
+            window.location.href = 'login.html';
+        }
+
+        const currency = adminData.baseCurrency || 'USD';
+        document.getElementById('currencyDisplay').textContent = `Currency: ${currency}`;
+
+        let expenses = JSON.parse(localStorage.getItem('expenses')) || [];
+        let rules = JSON.parse(localStorage.getItem('rules')) || {};
+        const managerId = currentUser.email;
+
+        function getPendingExpenses() {
+            return expenses.filter(exp => exp.status === 'pending');
+        }
+
+        function getApprovedExpenses() {
+            return expenses.filter(exp => exp.status === 'approved' && exp.approvedBy === managerId);
+        }
+
+        function updatePendingTable() {
+            const tbody = document.getElementById('pendingTable');
+            tbody.innerHTML = '';
+            const pending = getPendingExpenses();
+            pending.forEach(exp => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = exp.category;
+                row.insertCell(1).textContent = exp.description;
+                row.insertCell(2).textContent = `${exp.amount} ${currency}`;
+                row.insertCell(3).textContent = 'Employee';
+                row.insertCell(4).textContent = exp.userId;
+                row.insertCell(5).textContent = exp.date;
+                const statusCell = row.insertCell(6);
+                statusCell.textContent = exp.status;
+                statusCell.className = `status-${exp.status}`;
+
+                const actionsCell = row.insertCell(7);
+                const approveBtn = document.createElement('button');
+                approveBtn.textContent = 'Approve';
+                approveBtn.className = 'approve-btn';
+                approveBtn.onclick = () => handleApprove(exp.id);
+                const rejectBtn = document.createElement('button');
+                rejectBtn.textContent = 'Reject';
+                rejectBtn.className = 'reject-btn';
+                rejectBtn.onclick = () => handleReject(exp.id);
+                actionsCell.appendChild(approveBtn);
+                actionsCell.appendChild(rejectBtn);
+            });
+        }
+
+        function updateApprovedTable() {
+            const tbody = document.getElementById('approvedTable');
+            tbody.innerHTML = '';
+            const approved = getApprovedExpenses();
+            approved.forEach(exp => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = exp.category;
+                row.insertCell(1).textContent = exp.description;
+                row.insertCell(2).textContent = `${exp.amount} ${currency}`;
+                row.insertCell(3).textContent = exp.userId;
+                row.insertCell(4).textContent = exp.date;
+                const statusCell = row.insertCell(5);
+                statusCell.textContent = exp.status;
+                statusCell.className = `status-${exp.status}`;
+                row.insertCell(6).textContent = exp.approvedAt || 'N/A';
+            });
+        }
+
+        function handleApprove(id) {
+            const expense = expenses.find(exp => exp.id === id);
+            if (expense) {
+                if (rules[expense.category] && expense.amount > rules[expense.category]) {
+                    alert('Amount exceeds rule limit! Auto-rejecting.');
+                    expense.status = 'rejected';
+                    expense.rejectedBy = managerId;
+                    expense.rejectedAt = new Date().toISOString();
+                } else {
+                    expense.status = 'approved';
+                    expense.approvedBy = managerId;
+                    expense.approvedAt = new Date().toISOString();
+                }
+                localStorage.setItem('expenses', JSON.stringify(expenses));
+                updatePendingTable();
+                updateApprovedTable();
+                alert('Action taken successfully!');
+            }
+        }
+
+        function handleReject(id) {
+            const expense = expenses.find(exp => exp.id === id);
+            if (expense) {
+                expense.status = 'rejected';
+                expense.rejectedBy = managerId;
+                expense.rejectedAt = new Date().toISOString();
+                localStorage.setItem('expenses', JSON.stringify(expenses));
+                updatePendingTable();
+                alert('Rejected successfully!');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('currentUser');
+            window.location.href = 'login.html';
+        }
+
+        updatePendingTable();
+        updateApprovedTable();
+    </script>
+</body>
+</html>
