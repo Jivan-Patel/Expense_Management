@@ -282,12 +282,10 @@
 
         function logout() {
             localStorage.removeItem('currentUser');
-            window.location.href = 'login.html';
-        }
-
-        function goToDashboard() {
             window.location.href = 'index.html';
         }
+
+       
 
         updatePendingTable();
         updateHistoryTable();
